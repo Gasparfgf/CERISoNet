@@ -1,0 +1,5 @@
+<div *ngIf="notification" class="notification-banner" [ngClass]="notification.type">
+  <span class="close-btn" (click)="closeNotification()">&times;</span>
+  <p>{{ notification.message }} !</p>
+</div>
+<router-outlet />
