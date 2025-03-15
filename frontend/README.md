@@ -30,6 +30,7 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 ## Color Palette
 These are the colors used in this project :
 
+- **Sweet** : `#eef1f7`
 - **Light** : `#9f86fa`
 - **Light color** : `#6064fc`
 - **Primary color** : `#1b59ff`
