@@ -25,3 +25,13 @@ Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To u
 ## Further help
 
 To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+
+
+## Color Palette
+These are the colors used in this project :
+
+- **Light** : `#9f86fa`
+- **Light color** : `#6064fc`
+- **Primary color** : `#1b59ff`
+- **Secondary color** : `#0005f1`
+- **Dark color** : `#2f0885`
