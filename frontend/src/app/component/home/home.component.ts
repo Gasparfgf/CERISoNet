@@ -1,8 +1,8 @@
 import { Component } from '@angular/core';
 import {FormsModule} from "@angular/forms";
 import {Router} from "@angular/router";
-import {NotificationService} from "../service/notification.service";
-import {AuthService} from "../service/auth.service";
+import {NotificationService} from "../../service/notification.service";
+import {AuthService} from "../../service/auth.service";
 
 @Component({
   selector: 'app-home',
@@ -14,7 +14,6 @@ import {AuthService} from "../service/auth.service";
   styleUrl: './home.component.css'
 })
 export class HomeComponent {
-  lastLogin: string | null = '';
 
   constructor(
     private authService: AuthService,
@@ -26,7 +25,7 @@ export class HomeComponent {
     this.authService.logout().subscribe(() => {
       this.notificationService.showNotification('Vous êtes déconnecté.', 'success');
       this.router.navigate(['/login']);
-    }, (error) => {
+    }, (error: any) => {
       console.error('Erreur lors de la déconnexion', error);
       this.notificationService.showNotification('Erreur lors de la déconnexion.', 'error');
     });

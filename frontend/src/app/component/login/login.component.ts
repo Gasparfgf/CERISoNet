@@ -27,7 +27,7 @@ export class LoginComponent {
   loginData = { email: '', password: '' };
   errorMessage = '';
   successMessage = '';
-  lastLogin: string | Date = '';
+  lastLogin: string | null = '';
 
   constructor(
     private authService: AuthService,
@@ -43,7 +43,7 @@ export class LoginComponent {
           this.errorMessage = '';
 
           const previousLogin = this.authService.getLastLogin();
-          this.lastLogin = previousLogin ? this.formatDate(previousLogin) : 'Aucune connexion précédente.';
+          this.lastLogin = previousLogin == '' ? this.formatDate(previousLogin) : 'Aucune connexion précédente';
           this.authService.saveLastLogin(response.lastLogin);
 
           this.notificationService.showNotification(
