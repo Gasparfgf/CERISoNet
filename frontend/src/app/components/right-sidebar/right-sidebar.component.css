@@ -1,0 +1,33 @@
+.sidebar {
+    padding: 1rem;
+    background-color: #f3f3f3;
+    border-left: 1px solid #ccc;
+    min-width: 250px;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+}
+
+h3 {
+    margin-top: 0;
+    font-size: 1.2rem;
+}
+
+.filter-section {
+    margin-top: 1rem;
+}
+
+.filter-section label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.filter-section select,
+.filter-section input {
+    width: 100%;
+    padding: 6px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+  

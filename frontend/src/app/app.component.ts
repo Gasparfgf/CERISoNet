@@ -1,27 +1,15 @@
+import { CommonModule, NgClass } from "@angular/common";
 import { Component } from '@angular/core';
+import { FormsModule, ReactiveFormsModule } from "@angular/forms";
 import { RouterOutlet } from '@angular/router';
-import {LoginComponent} from "./component/login/login.component";
-import {FormsModule, ReactiveFormsModule} from "@angular/forms";
-import {NgClass, NgIf} from "@angular/common";
-import {NotificationService} from "./service/notification.service";
+import { LoginComponent } from "./components/login/login.component";
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, LoginComponent, FormsModule, NgIf, ReactiveFormsModule, NgClass],
+  imports: [RouterOutlet, LoginComponent, FormsModule, ReactiveFormsModule, NgClass, CommonModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
 export class AppComponent {
-  notification: { message: string, type: string } | null = null;
-
-  constructor(private notificationService: NotificationService) {
-    this.notificationService.currentMessage.subscribe(message => {
-      this.notification = message;
-    });
-  }
-
-  closeNotification() {
-    this.notification = null;
-  }
 }

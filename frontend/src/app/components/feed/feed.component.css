@@ -1,0 +1,100 @@
+.message-feed {
+    padding: 1rem;
+    max-width: 600px;
+    margin: auto;
+}
+
+.message-card {
+    background: #f9f9f9;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.message-header {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.date {
+    color: #888;
+    font-size: 0.85rem;
+}
+
+.message-body p {
+    margin: 0.5rem 0;
+}
+
+.post-image {
+    width: 100%;
+    border-radius: 8px;
+    margin: 0.5rem 0;
+}
+
+.hashtags {
+    margin-top: 0.5rem;
+}
+
+.tag {
+    background: #e0e0e0;
+    border-radius: 5px;
+    padding: 2px 8px;
+    margin-right: 5px;
+    font-size: 0.85rem;
+}
+
+.message-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.75rem;
+}
+
+.message-actions button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.comments-section {
+    margin-top: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #ddd;
+}
+
+.comment {
+    background: #fff;
+    border-radius: 6px;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.comment-form {
+    display: flex;
+    margin-top: 0.5rem;
+    gap: 0.5rem;
+}
+
+.comment-form input {
+    flex: 1;
+    padding: 6px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+.comment-form button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+.shared-info {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #555;
+}
+  

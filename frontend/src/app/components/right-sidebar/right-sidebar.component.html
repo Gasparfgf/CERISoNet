@@ -1,0 +1,26 @@
+<aside class="sidebar">
+    <h3>Filtrer les messages</h3>
+
+    <div class="filter-section">
+        <label for="filter">Trier par :</label>
+        <select id="filter" [(ngModel)]="selectedFilter" (change)="applyFilter()">
+          <option value="date">Date</option>
+          <option value="likes">Popularité</option>
+          <option value="owner">Propriétaire</option>
+        </select>
+    </div>
+
+    <h4>Filtrer par :</h4>
+    <label>
+      <input type="radio" name="ownerFilter" value="all" [(ngModel)]="ownerFilter" (change)="filterMessages()"> Tous
+    </label>
+    <label>
+      <input type="radio" name="ownerFilter" value="mine" [(ngModel)]="ownerFilter" (change)="filterMessages()"> Moi
+    </label>
+    <label>
+      <input type="radio" name="ownerFilter" value="others" [(ngModel)]="ownerFilter" (change)="filterMessages()"> Autres
+    </label>
+
+    <input type="text" [(ngModel)]="hashtagFilter" placeholder="#hashtag" (input)="filterMessages()" />
+</aside>
+  

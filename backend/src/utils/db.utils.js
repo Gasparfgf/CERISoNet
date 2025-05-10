@@ -1,8 +1,12 @@
 // Centralise la connexion à PostgreSQL et MongoDB.
 const { Pool } = require('pg');
+const { MongoClient, ObjectId } = require('mongodb');
 const session = require("express-session");
 const MongoDBStore = require('connect-mongodb-session')(session);
 
+
+const uri = "mongodb://localhost:27017";
+let db;
 
 // Configuration PostgreSQL
 const pool = new Pool({
@@ -15,8 +19,17 @@ const pool = new Pool({
 
 // Configuration du store MongoDB pour les sessions
 const sessionStore = new MongoDBStore({
-    uri: 'mongodb://localhost:27017/MySession3215',
+    uri: uri+'/MySession3215',
     collection: 'sessions'
 });
 
-module.exports = { pool, sessionStore };
+// Connexion MongoDB
+async function connectToMongo() {
+    if (db) return db;
+    const client = new MongoClient(uri);
+    await client.connect();
+    db = client.db("db-CERI");
+    return db;
+}
+
+module.exports = { pool, sessionStore, connectToMongo, ObjectId };

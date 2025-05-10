@@ -1,0 +1,60 @@
+<main class="message-feed">
+    <h2>Bienvenue sur le réseau CERISoNet 🎓</h2>
+  
+    <div *ngIf="isLoading" class="loading">Chargement des messages...</div>
+    <div *ngIf="!isLoading && messages.length === 0">
+      Aucun message à afficher.
+    </div>
+  
+    <div *ngFor="let message of messages" class="message-card">
+  
+      <!-- En-tête -->
+      <div class="message-header">
+        <strong>{{ message.createdBy.pseudo }}</strong><br>
+        <small class="date">{{ message.date }} à {{ message.hour }}</small>
+      </div>
+  
+      <!-- Corps -->
+      <div class="message-body">
+        <p>{{ message.body }}</p>
+        <img *ngIf="message.images" [src]="message.images.url" class="post-image" />
+        <div class="hashtags">
+          <span *ngFor="let tag of message.hashtags" class="tag">{{ tag }}</span>
+        </div>
+      </div>
+  
+      <!-- Actions -->
+      <div class="message-actions">
+        <button (click)="like.emit(message)">❤️ {{ message.likes }}</button>
+        <button (click)="toggleComments(message._id)">💬 {{ message.comments.length }}</button>
+        <button (click)="share.emit(message)">🔁 Partager</button>
+      </div>
+  
+      <!-- Commentaires -->
+      <div class="comments-section" *ngIf="showComments[message._id]">
+        <h4>Commentaires :</h4>
+        <div *ngFor="let comment of message.comments" class="comment">
+          <p><strong>{{ comment.commentedBy.pseudo }}</strong> : {{ comment.text }}</p>
+          <small>{{ comment.date }} à {{ comment.hour }}</small>
+          <button *ngIf="comment.commentedBy.id === currentUser?.id"
+                  (click)="delete.emit({ message, commentId: comment._id })">
+            🗑️ Supprimer
+          </button>
+        </div>
+  
+        <form (ngSubmit)="submitComment(message)" class="comment-form">
+          <input type="text"
+                 [(ngModel)]="newComment[message._id]"
+                 name="comment{{ message._id }}"
+                 placeholder="Ajouter un commentaire..." required>
+          <button type="submit">Envoyer</button>
+        </form>
+      </div>
+  
+      <!-- Partage info -->
+      <div *ngIf="message.sharedBy?.length" class="shared-info">
+        <small>Partagé par {{ message.sharedBy?.length }} utilisateur(s)</small>
+      </div>
+    </div>
+</main>
+  

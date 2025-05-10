@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import {BehaviorSubject} from "rxjs";
+import { BehaviorSubject } from "rxjs";
 
 @Injectable({
   providedIn: 'root'
@@ -9,13 +9,13 @@ export class NotificationService {
   currentMessage = this.messageSource.asObservable();
 
   // Met à jour l'état du message
-  showNotification(message: string, type: 'success' | 'error') {
+  showNotification(message: string, type: 'success' | 'error' | 'info') {
     this.messageSource.next({ message, type });
 
     // cacher automatiquement après 5 seconds
     setTimeout(() => {
       this.clearNotification();
-    }, 60000);
+    }, 5000);
   }
 
   clearNotification() {

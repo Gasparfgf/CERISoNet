@@ -8,7 +8,9 @@ const cors = require('cors');
 const path = require('path');
 
 const { sessionStore } = require('./src/utils/db.utils');
-const authRoutes = require('./src/router/routes');
+const authRoutes = require('./src/router/auth.router');
+const messagesRouter = require('./src/router/messages.router');
+const socketIO = require('./src/sockets/ws.handler');
 
 
 const app = express();
@@ -19,11 +21,14 @@ const options = {
     key : fs.readFileSync('ssl_certs/key.pem'),
     cert : fs.readFileSync('ssl_certs/cert.pem')
 }
-
 // Création du serveur HTTPS avec les options SSL
 const httpsServer = https.createServer(options, app);
+const io = socketIO((httpsServer));
 
 const sessionSecret = crypto.randomBytes(32).toString('hex');
+
+// Permet de l'utiliser ailleurs
+app.set('socketio', io);
 
 // Middlewares
 app.use(express.json());
@@ -41,13 +46,13 @@ app.use(session({
     store: sessionStore
 }));
 app.use('/', authRoutes);
-
+app.use('/api', messagesRouter);
 
 
 // Servir les fichiers statiques Angular
 const distPath = path.join(__dirname, '../frontend/dist/frontend/browser');
 if (!fs.existsSync(distPath)) {
-    console.error(`❌ Error: ${distPath} folder does not exist. Have you executed 'ng build' ?`);
+    console.error(`❌ Error: ${distPath} folder does not exist. Have you executed 'node_modules/@angular/cli/bin/ng.js build' ?`);
     process.exit(1);
 }
 app.use(express.static(distPath));

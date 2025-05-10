@@ -4,7 +4,7 @@
   align-items: center;
   height: 100vh; /* Prend toute la hauteur de l'écran */
   width: 100%;
-  background: #eef1f7;
+  background: #fcffff;
 }
 
 /* Style du conteneur de login */
@@ -12,7 +12,7 @@
   width: 350px;
   padding: 20px;
   border-radius: 10px;
-  background: white;
+  background: #fcffff;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
   text-align: center;
   animation: fadeIn 0.5s ease-in-out;
@@ -39,7 +39,7 @@ button {
   width: 100%;
   padding: 10px;
   background: #1b59ff;
-  color: white;
+  color: #fcffff;
   border: none;
   border-radius: 5px;
   cursor: pointer;
@@ -48,7 +48,7 @@ button {
 }
 
 button:hover {
-  background: #0005f1;
+  background: #005187;
 }
 
 /* Animation d'apparition */

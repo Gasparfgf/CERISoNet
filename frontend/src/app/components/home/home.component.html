@@ -1,0 +1,148 @@
+<app-banner></app-banner>
+
+<nav class="navbar">
+  <div class="navbar-left">
+    <h1>CERISoNet</h1>
+  </div>
+  <div class="navbar-right">
+    <button (click)="showNotifications()">🔔</button>
+    <button (click)="logout()">🚪 Déconnexion</button>
+  </div>
+</nav>
+
+<div class="notification-panel" *ngIf="showNotificationPanel">
+  <h4>📢 Notifications</h4>
+  <ul>
+    <li *ngFor="let note of notifications">{{ note }}</li>
+    <li *ngIf="notifications.length === 0">Aucune notification.</li>
+  </ul>
+</div>
+
+<div class="home-layout">
+
+  <!-- 🔵 COLONNE GAUCHE : Profil utilisateur + connectés -->
+  <aside class="left-sidebar">
+    <div class="profile-card">
+      <img [src]="currentUser?.avatar || 'assets/default-avatar.png'" alt="Avatar" class="avatar" />
+      <h3>{{ currentUser?.pseudo }}</h3>
+      <p>Dernière connexion :</p>
+      <p class="last-login">{{ lastLogin | date:'dd/MM/yyyy à HH:mm' || 'inconnue' }}</p>
+    </div>
+
+    <div class="connected-users">
+      <h4>Utilisateurs connectés :</h4>
+      <ul>
+        <li *ngFor="let user of connectedUsers" class="user-item">
+          <img [src]="user.avatar || 'assets/default-avatar.png'" class="mini-avatar" />
+          {{ user.pseudo }}   <span class="online-dot"></span>
+        </li>
+      </ul>
+    </div>
+  </aside>
+
+  <!-- 🟢 COLONNE DROITE : Messages -->
+  <main class="message-feed">
+    <h2>Bienvenue sur le réseau CERISoNet 🎓</h2>
+
+    <div *ngIf="isLoading" class="loading">Chargement des messages...</div>
+    <div *ngIf="!isLoading && messages.length === 0">
+      Aucun message à afficher.
+    </div>
+
+    <div *ngFor="let message of filteredMessages" class="message-card">
+
+      <!-- En-tête message -->
+      <div class="message-header">
+        <div>
+          <img [src]="message.createdBy.avatar || 'assets/default-avatar.png'" alt="Avatar" class="mini-avatar">
+          <strong>{{ message.createdBy.pseudo }}</strong><br>
+        </div>
+        <small class="date">{{ message.date }} à {{ message.hour }}</small>
+      </div>
+
+      <!-- Corps message -->
+      <div class="message-body">
+        <p>{{ message.body }}</p>
+
+        <img *ngIf="message.images" [src]="message.images.url" [alt]="message.images.title" class="post-image" />
+
+        <div class="hashtags">
+          <span *ngFor="let tag of message.hashtags" class="tag">{{ tag }}</span>
+        </div>
+      </div>
+
+      <!-- Actions -->
+    <div class="message-actions">
+      <button (click)="likeMessage(message)" [ngClass]="{'liked': message.likedBy.includes(currentUser?.id)}">
+        ❤️ {{ message.likes }}
+      </button>
+      <button (click)="toggleComments(message._id)">
+        💬 {{ message.comments.length }}
+      </button>
+      <button (click)="shareMessage(message)" [ngClass]="{'shared': message.sharedBy?.includes(currentUser?.id)}">
+        🔁 Partager
+      </button>
+    </div>
+
+      
+
+      <!-- Section commentaires -->
+      <div class="comments-section" *ngIf="showComments[message._id]">
+        <h4>Commentaires :</h4>
+
+        <div *ngFor="let comment of message.comments" class="comment">
+          <p><strong>{{ comment.commentedBy.pseudo }}</strong> : {{ comment.text }}</p>
+          <small>{{ comment.date }} à {{ comment.hour }}</small>
+
+          <button *ngIf="comment.commentedBy.id === currentUser?.id"
+                  (click)="deleteComment(message, comment._id)">
+            🗑️ Supprimer
+          </button>
+        </div>
+
+        <!-- Ajouter un commentaire -->
+        <form (ngSubmit)="submitComment(message)" class="comment-form">
+          <input type="text" [(ngModel)]="newComment[message._id]" name="newComment{{ message._id }}" placeholder="Ajouter un commentaire..." required>
+          <button type="submit">Envoyer</button>
+        </form>
+      </div>
+      
+      <!-- Partagé par -->
+      <div class="shared-info" *ngIf="message.sharedBy?.length">
+        <small>Partagé par {{ message.sharedBy?.length }} utilisateur(s)</small>
+      </div>
+    </div>
+  </main>
+
+  <div class="right-sidebar">
+    <h3>Options</h3>
+
+    <div class="trier-section">
+      <h4>Trier par :</h4>
+      <select [(ngModel)]="sortOption" (change)="filterAndSortMessages()">
+        <option value="owner">Propriétaire</option>
+        <option value="date">Date</option>
+        <option value="likes">Popularité</option>
+      </select>
+    </div>
+
+    <div class="filter-section">
+      <h4>Filtrer par :</h4>
+
+      <div class="labels-radio">
+        <label>
+          <input type="radio" name="ownerFilter" value="all" [(ngModel)]="ownerFilter" (change)="filterMessages()"> Tous
+        </label>
+        <label>
+          <input type="radio" name="ownerFilter" value="mine" [(ngModel)]="ownerFilter" (change)="filterMessages()"> Moi
+        </label>
+        <label>
+          <input type="radio" name="ownerFilter" value="others" [(ngModel)]="ownerFilter" (change)="filterMessages()"> Autres
+        </label>
+      </div>
+
+      <input type="text" [(ngModel)]="hashtagFilter" placeholder="Filtrer par #hashtag" (input)="filterAndSortMessages()" />
+    </div>
+  </div>
+
+</div>
