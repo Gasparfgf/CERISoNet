@@ -105,10 +105,24 @@ deleteComment = async (req, res) => {
 };
 
 getMessages = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
   try {
     const db = await connectToMongo();
     const messagesCollection = db.collection('CERISoNet');
-    const messages = await messagesCollection.find().sort({ date: -1, hour: -1 }).toArray();
+    
+    // Compter le nombre total de messages
+    const totalMessages = await messagesCollection.countDocuments();
+    
+    // Récupérer les messages paginés
+    const messages = await messagesCollection
+      .find()
+      .sort({ date: -1, hour: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
 
     // 1. Récupérer tous les IDs nécessaires
     const userIds = new Set();
@@ -121,8 +135,8 @@ getMessages = async (req, res) => {
 
     // 2. Aller chercher id, pseudo, avatar depuis PostgreSQL
     const parsedIds = Array.from(userIds)
-    .map(id => parseInt(id))
-    .filter(id => !isNaN(id));
+      .map(id => parseInt(id))
+      .filter(id => !isNaN(id));
 
     let usersMap = {};
     if (parsedIds.length > 0) {
@@ -151,7 +165,12 @@ getMessages = async (req, res) => {
       };
     });
 
-    return res.json(messagesWithUsers);
+    return res.json({
+      messages: messagesWithUsers,
+      currentPage: page,
+      totalPages: Math.ceil(totalMessages / limit),
+      totalMessages
+    });
   } catch (err) {
     console.error("Erreur dans getMessages:", err);
     return res.status(500).json({ success: false, message: 'Erreur lors du chargement des messages' });

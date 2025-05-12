@@ -14,3 +14,10 @@ export interface Message {
     images: { url: string; title: string };
     sharedBy?: number[];
 }
+
+export interface MessageResponse {
+    messages: Message[];
+    currentPage: number;
+    totalPages: number;
+    totalMessages: number;
+  }

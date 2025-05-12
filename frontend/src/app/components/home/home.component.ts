@@ -22,6 +22,8 @@ import { BannerComponent } from '../banner/banner.component';
 export class HomeComponent implements OnInit {
   messages: Message[] = [];
   isLoading = true;
+  currentPage = 1;
+  totalPages = 1;
   connectedUsers: any[] = [];
   currentUser: any;
   lastLogin: string | null = '';
@@ -95,11 +97,15 @@ export class HomeComponent implements OnInit {
     });
   }
 
-  fetchMessages(): void {
-    this.messageService.getMessages().subscribe({
-      next: (data) => {
-        this.messages = data;
-        this.filterAndSortMessages();
+  fetchMessages(page: number = 1): void {
+    this.isLoading = true;
+    this.messageService.getMessages(page).subscribe({
+      next: (response) => {
+        this.messages = page === 1 
+          ? response.messages 
+          : [...this.messages, ...response.messages];
+        this.currentPage = response.currentPage;
+        this.totalPages = response.totalPages;
         this.isLoading = false;
       },
       error: () => {
@@ -107,6 +113,12 @@ export class HomeComponent implements OnInit {
         this.isLoading = false;
       }
     });
+  }
+
+  loadMoreMessages(): void {
+    if (this.currentPage < this.totalPages) {
+      this.fetchMessages(this.currentPage + 1);
+    }
   }
 
   filterAndSortMessages() {
