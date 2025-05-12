@@ -9,14 +9,12 @@ import { MessageService } from '../../services/message/message.service';
 import { NotificationService } from "../../services/notification/notification.service";
 import { SocketService } from '../../services/socket/socket.service';
 import { BannerComponent } from '../banner/banner.component';
-import { LeftSidebarComponent } from '../left-sidebar/left-sidebar.component';
-import { RightSidebarComponent } from '../right-sidebar/right-sidebar.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
   imports: [
-    FormsModule, CommonModule, BannerComponent, RightSidebarComponent, LeftSidebarComponent
+    FormsModule, CommonModule, BannerComponent
   ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css'
@@ -252,24 +250,52 @@ export class HomeComponent implements OnInit {
         }
       }
     });
+
+    this.wsService.onCommentDeleted().subscribe(({ messageId, commentId, deletedBy }) => {
+      const message = this.messages.find(msg => msg._id === messageId);
+      
+      if (message) {
+        // Supprimer le commentaire localement
+        message.comments = message.comments.filter(c => c._id !== commentId);
+        
+        // Notification si ce n'est pas notre propre suppression
+        if (deletedBy !== this.currentUser.id) {
+          const deletedComment = message.comments.find(c => c._id === commentId);
+          if (deletedComment && message.createdBy.id === this.currentUser.id) {
+            this.notifications.unshift(`💬 Un commentaire a été supprimé de votre message.`);
+            this.unreadCount++;
+          }
+        }
+      }
+    });
   
     // Partages
-    this.wsService.onMessageShared().subscribe(({ originalMessageId, sharedBy, user }) => {
+    this.wsService.onMessageShared().subscribe(({ originalMessageId, sharedBy, user, shared, unshared }) => {
       const message = this.messages.find(msg => msg._id === originalMessageId);
       
       if (message) {
         message.sharedBy = message.sharedBy || [];
         
-        if (!message.sharedBy?.includes(sharedBy)) {
-          message.sharedBy.push(sharedBy);
+        if (shared) {
+          // Ajout d'un partage
+          if (!message.sharedBy.includes(sharedBy)) {
+            message.sharedBy.push(sharedBy);
+            
+            if (message.createdBy.id === this.currentUser.id && sharedBy !== this.currentUser.id) {
+              const userName = user ? user.pseudo : "Quelqu'un";
+              this.notifications.unshift(`🔄 ${userName} a partagé votre message.`);
+              this.unreadCount++;
+            }
+          }
+        } else if (unshared) {
+          // Suppression d'un partage
+          message.sharedBy = message.sharedBy.filter(id => id !== sharedBy);
           
           if (message.createdBy.id === this.currentUser.id && sharedBy !== this.currentUser.id) {
             const userName = user ? user.pseudo : "Quelqu'un";
-            this.notifications.unshift(`🔄 ${userName} a partagé votre message.`);
-            this.unreadCount++;
+            this.notifications.unshift(`🔄 ${userName} a annulé le partage de votre message.`);
           }
         }
-        this.unreadCount++;
       }
     });
   }  

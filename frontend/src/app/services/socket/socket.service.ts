@@ -62,6 +62,12 @@ export class SocketService {
     });
   }
 
+  onCommentDeleted(): Observable<any> {
+    return new Observable(observer => {
+      this.socket.on('comment-deleted', (data) => observer.next(data));
+    });
+  }
+
   emitEvent(eventName: string, data: any): void {
     this.socket.emit(eventName, data);
   }
