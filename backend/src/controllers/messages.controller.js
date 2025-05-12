@@ -1,27 +1,9 @@
 const { connectToMongo, ObjectId, pool } = require('../utils/db.utils');
 
-postMessage = async (req, res) => {
-  const { date, hour, body, createdBy, image, hashtags } = req.body;
-  const message = {
-    date,
-    hour,
-    body,
-    createdBy,
-    image: image || null,
-    likes: 0,
-    hashtags: hashtags || [],
-    comments: [],
-    shared: null
-  };
+const db = await connectToMongo();
+const messagesCollection = db.collection('CERISoNet');
 
-  try {
-    const db = await connectToMongo();
-    const result = await db.collection('CERISoNet').insertOne(message);
-    res.status(201).json({ success: true, id: result.insertedId });
-  } catch (err) {
-    res.status(500).json({ success: false, message: 'Erreur lors de l\'enregistrement du message' });
-  }
-};
+const io = req.app.get('socketio');
 
 addComment = async (req, res) => {
   const messageId = parseInt(req.params.id);
@@ -36,164 +18,84 @@ addComment = async (req, res) => {
   console.log('commentToSave =', commentToSave);
 
   try {
-    const db = await connectToMongo();
-    await db.collection('CERISoNet').updateOne(
+    messagesCollection.updateOne(
       { _id: messageId },
       { $push: { comments: commentToSave } }
     );
 
-    const io = req.app.get('socketio');
 
     // Chercher le pseudo correspondant à l'ID
     const { rows } = await pool.query(
-      'SELECT pseudo FROM fredouil.compte WHERE id = $1',
+      'SELECT pseudo, avatar FROM fredouil.compte WHERE id = $1',
       [parseInt(userId)]
     );
-
-    const pseudo = rows[0]?.pseudo || 'Inconnu';
+    const user = rows[0] || { pseudo: 'Inconnu', avatar: null };
 
     const commentToSend = {
+      _id: commentToSave._id,
       text,
       date,
       hour,
       commentedBy: {
         id: userId,
-        pseudo
+        pseudo: user.pseudo,
+        avatar: user.avatar
       }
     };
 
     io.emit('message-commented', { messageId, comment: commentToSend });
-    res.json(commentToSend);
+    return res.json(commentToSend);
   } catch (err) {
     console.error('Erreur dans addComment:', err);
-    res.status(500).json({ success: false, message: "Erreur lors de l'ajout du commentaire" });
+    return res.status(500).json({ success: false, message: "Erreur lors de l'ajout du commentaire" });
   }
 };
 
-
-likeMessage = async (req, res) => {
-  const messageId = parseInt(req.params.id);
-  const userId = req.body.userId;
-  console.log("likeMessage.messageId reçu:", req.params.id); // pour like
-  console.log("likeMessage.userId reçu:", req.body.userId);
+deleteComment = async (req, res) => {
+  const messageId = parseInt(req.params.messageId);
+  const commentId = req.params.commentId;
+  const { userId } = req.body;
 
   try {
-    const db = await connectToMongo();
-    const message = await db.collection('CERISoNet').findOne({ _id: messageId });
-
+    // Récupérer le message pour vérifier si le commentaire existe
+    const message = await messagesCollection.findOne({ _id: messageId });
     if (!message) {
       return res.status(404).json({ success: false, message: "Message non trouvé" });
     }
 
-    const alreadyLiked = message.likedBy && message.likedBy.includes(userId);
-
-    let update;
-    if (alreadyLiked) {
-      update = {
-        $pull: { likedBy: userId },
-        $inc: { likes: -1 }
-      };
-    } else {
-      update = {
-        $addToSet: { likedBy: userId },
-        $inc: { likes: 1 }
-      };
+    // Vérifier si le commentaire existe et appartient à l'utilisateur
+    const comment = message.comments?.find(c => c._id.toString() === commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: "Commentaire non trouvé" });
     }
 
-    await db.collection('CERISoNet').updateOne({ _id: messageId }, update);
-
-    const io = req.app.get('socketio');
-    io.emit('message-liked', { messageId, liked: !alreadyLiked });
-
-    res.json({ success: true, liked: !alreadyLiked });
-  } catch (err) {
-    console.error('Erreur dans likeMessage:', err);
-    res.status(500).json({ success: false, message: 'Erreur lors du traitement du like' });
-  }
-};
-
-
-shareMessage = async (req, res) => {
-  const messageId = parseInt(req.params.id);
-  const { userId } = req.body; // tu dois envoyer userId dans le body POST
-  console.log("shareMessage.messageId reçu:", req.params.id); // pour like
-  console.log("shareMessage.userId reçu:", req.body);
-
-  try {
-    const db = await connectToMongo();
-    const messagesCollection = db.collection('CERISoNet');
-
-    // Récupérer le message d'origine
-    const originalMessage = await messagesCollection.findOne({ _id: messageId });
-    if (!originalMessage) {
-      return res.status(404).json({ success: false, message: "Message non trouvé" });
+    if (comment.commentedBy.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Vous ne pouvez supprimer que vos propres commentaires"
+      });
     }
 
-    // Vérifier si ce message est déjà partagé par l'utilisateur
-    const alreadyShared = await messagesCollection.findOne({
-      shared: messageId,
-      'createdBy.id': userId
-    });
-
-    if (alreadyShared) {
-      // Supprimer le message partagé
-      await messagesCollection.deleteOne({ _id: alreadyShared._id });
-
-      // Supprimer l'userId du tableau sharedBy du message original
-      await messagesCollection.updateOne(
-        { _id: messageId },
-        { $pull: { sharedBy: userId } }
-      );
-
-      return res.json({ success: true, unshared: true });
-    }
-
-    // Créer le nouveau message partagé
-    const now = new Date();
-    const sharedMessage = {
-      date: now.toISOString().split('T')[0],
-      hour: now.toTimeString().split(' ')[0].substring(0, 5),
-      body: originalMessage.body,
-      createdBy: originalMessage.createdBy,
-      images: originalMessage.images || null,
-      likes: 0,
-      likedBy: [],
-      hashtags: originalMessage.hashtags || [],
-      comments: [],
-      shared: messageId, // référence vers le message original
-      sharedBy: [], // pas besoin de remplissage ici, c’est pour d’éventuels futurs partages
-    };
-
-    const insertResult = await messagesCollection.insertOne(sharedMessage);
-
-    // Ajouter userId au tableau sharedBy du message original
+    // Supprime le commentaire
     await messagesCollection.updateOne(
       { _id: messageId },
-      { $addToSet: { sharedBy: userId } }
+      { $pull: { comments: { _id: commentId } } }
     );
 
-    const io = req.app.get('socketio');
-    io.emit('message-shared', {
-      originalMessageId: messageId,
-      sharedBy: userId
-    });
-
-    res.status(201).json({ success: true, id: insertResult.insertedId, shared: true });
+    io.emit('comment-deleted', { messageId, commentId });
+    return res.json({ success: true, message: 'Commentaire supprimé' });
   } catch (err) {
-    console.error('Erreur dans shareMessage:', err);
-    res.status(500).json({ success: false, message: 'Erreur lors du partage du message' });
+    console.error("Erreur lors de la suppression du commentaire :", err);
+    return res.status(500).json({ success: false, message: 'Erreur serveur lors de la suppression' });
   }
 };
-
 
 getMessages = async (req, res) => {
   try {
-    const db = await connectToMongo();
-    const messages = await db.collection('CERISoNet').find().sort({ date: -1, hour: -1 }).toArray();
+    const messages = await messagesCollection.find().sort({ date: -1, hour: -1 }).toArray();
 
     // 1. Récupérer tous les IDs nécessaires
     const userIds = new Set();
-
     messages.forEach(msg => {
       if (msg.createdBy) userIds.add(msg.createdBy.toString());
       msg.comments?.forEach(comment => {
@@ -233,55 +135,147 @@ getMessages = async (req, res) => {
       };
     });
 
-    res.json(messagesWithUsers);
+    return res.json(messagesWithUsers);
   } catch (err) {
     console.error("Erreur dans getMessages:", err);
-    res.status(500).json({ success: false, message: 'Erreur lors du chargement des messages' });
+    return res.status(500).json({ success: false, message: 'Erreur lors du chargement des messages' });
   }
 };
 
-deleteComment = async (req, res) => {
-  const messageId = parseInt(req.params.messageId);
-  const commentId = req.params.commentId;
-  const { userId } = req.body;
-  console.log("deleteComment.messageId reçu:", req.params.id); // pour like
-  console.log("deleteComment.userId reçu:", req.body);
-  console.log("deleteComment.commentId reçu:", req.params.commentId);
+likeMessage = async (req, res) => {
+  const messageId = parseInt(req.params.id);
+  const userId = req.body.userId;
 
   try {
-    const db = await connectToMongo();
-    const messagesCollection = db.collection('CERISoNet');
+    const message = await messagesCollection.findOne({ _id: messageId });
+    if (!message) {
+      return res.status(404).json({ success: false, message: "Message non trouvé" });
+    }
 
-    // Vérifie si le commentaire appartient à l'utilisateur
-    const message = await messagesCollection.findOne({
-      _id: messageId,
-      comments: {
-        $elemMatch: {
-          _id: commentId,
-          'commentedBy.id': userId
-        }
+    let update;
+    const alreadyLiked = message.likedBy && message.likedBy.includes(userId);
+    if (alreadyLiked) {
+      update = {
+        $pull: { likedBy: userId },
+        $inc: { likes: -1 }
+      };
+    } else {
+      update = {
+        $addToSet: { likedBy: userId },
+        $inc: { likes: 1 }
+      };
+    }
+
+    await db.collection('CERISoNet').updateOne({ _id: messageId }, update);
+
+    const { rows } = await pool.query(
+      'SELECT pseudo, avatar FROM fredouil.compte WHERE id = $1', 
+      [userId]
+    );
+    const user = rows[0] || { pseudo: 'Inconnu', avatar: null };
+    
+    const io = req.app.get('socketio');
+    io.emit('message-liked', { 
+      messageId, 
+      userId, 
+      user: {
+        id: userId,
+        pseudo: user.pseudo,
+        avatar: user.avatar
+      },
+      liked: !alreadyLiked 
+    });
+
+    return res.json({ success: true, liked: !alreadyLiked });
+  } catch (err) {
+    console.error('Erreur dans likeMessage:', err);
+    return res.status(500).json({ success: false, message: 'Erreur lors du traitement du like' });
+  }
+};
+
+
+shareMessage = async (req, res) => {
+  const messageId = parseInt(req.params.id);
+  const { userId } = req.body;
+
+  try {
+    // Récupérer le message d'origine
+    const originalMessage = await messagesCollection.findOne({ _id: messageId });
+    if (!originalMessage) {
+      return res.status(404).json({ success: false, message: "Message non trouvé" });
+    }
+
+    // Vérifier si ce message est déjà partagé par l'utilisateur
+    const alreadyShared = await messagesCollection.findOne({
+      shared: messageId,
+      'createdBy.id': userId
+    });
+
+    if (alreadyShared) {
+      // Supprimer le message partagé
+      await messagesCollection.deleteOne({ _id: alreadyShared._id });
+
+      // Supprimer l'userId du tableau sharedBy du message original
+      await messagesCollection.updateOne(
+        { _id: messageId },
+        { $pull: { sharedBy: userId } }
+      );
+
+      io.emit('message-unshared', {
+        originalMessageId: messageId,
+        unsharedBy: userId
+      });
+      return res.json({ success: true, unshared: true });
+    }
+
+    // Créer le nouveau message partagé
+    const now = new Date();
+    const sharedMessage = {
+      _id: new ObjectId(),
+      date: now.toISOString().split('T')[0],
+      hour: now.toTimeString().split(' ')[0].substring(0, 5),
+      body: originalMessage.body,
+      createdBy: originalMessage.createdBy,
+      images: originalMessage.images || null,
+      likes: 0,
+      likedBy: [],
+      hashtags: originalMessage.hashtags || [],
+      comments: [],
+      shared: messageId, // référence vers le message original
+      sharedBy: [], // pas besoin de remplissage ici, c’est pour d’éventuels futurs partages
+    };
+
+    const insertResult = await messagesCollection.insertOne(sharedMessage);
+
+    // Ajouter userId au tableau sharedBy du message original
+    await messagesCollection.updateOne(
+      { _id: messageId },
+      { $addToSet: { sharedBy: userId } }
+    );
+
+    const { rows } = await pool.query(
+      'SELECT pseudo, avatar FROM fredouil.compte WHERE id = $1',
+      [userId]
+    );
+    const user = rows[0] || { pseudo: 'Inconnu', avatar: null };
+
+    const io = req.app.get('socketio');
+    io.emit('message-shared', {
+      originalMessageId: messageId,
+      sharedBy: userId,
+      user: {
+        id: userId,
+        pseudo: user.pseudo,
+        avatar: user.avatar
       }
     });
 
-    console.log("message : ", message);
-    if (!message) {
-      return res.status(403).json({
-        success: false,
-        message: "Suppression interdite : commentaire non trouvé ou non autorisé"
-      });
-    }
-
-    // Supprime le commentaire
-    await messagesCollection.updateOne(
-      { _id: messageId },
-      { $pull: { comments: { _id: commentId } } }
-    );
-
-    res.json({ success: true, message: 'Commentaire supprimé' });
+    return res.status(201).json({ success: true, id: insertResult.insertedId, shared: true });
   } catch (err) {
-    console.error("Erreur lors de la suppression du commentaire :", err);
-    res.status(500).json({ success: false, message: 'Erreur serveur lors de la suppression' });
+    console.error('Erreur dans shareMessage:', err);
+    return res.status(500).json({ success: false, message: 'Erreur lors du partage du message' });
   }
 };
 
-module.exports = { getMessages, shareMessage, likeMessage, addComment, postMessage, deleteComment }
+
+module.exports = { getMessages, shareMessage, likeMessage, addComment, deleteComment }

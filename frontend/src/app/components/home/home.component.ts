@@ -9,7 +9,6 @@ import { MessageService } from '../../services/message/message.service';
 import { NotificationService } from "../../services/notification/notification.service";
 import { SocketService } from '../../services/socket/socket.service';
 import { BannerComponent } from '../banner/banner.component';
-import { FeedComponent } from '../feed/feed.component';
 import { LeftSidebarComponent } from '../left-sidebar/left-sidebar.component';
 import { RightSidebarComponent } from '../right-sidebar/right-sidebar.component';
 
@@ -17,7 +16,7 @@ import { RightSidebarComponent } from '../right-sidebar/right-sidebar.component'
   selector: 'app-home',
   standalone: true,
   imports: [
-    FormsModule, CommonModule, BannerComponent, RightSidebarComponent, LeftSidebarComponent, FeedComponent
+    FormsModule, CommonModule, BannerComponent, RightSidebarComponent, LeftSidebarComponent
   ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css'
@@ -65,17 +64,21 @@ export class HomeComponent implements OnInit {
 
   deleteComment(message: Message, commentId: string): void {
     const userId = this.authService.getUser().id;
-    console.log("comment id : ", commentId);
-    console.log("message id : ", message._id);
   
     this.messageService.deleteComment(message._id, commentId, userId).subscribe({
-      next: () => {
-        message.comments = message.comments.filter(c => c._id !== commentId);
-        this.notificationService.showNotification("Commentaire supprimé", "success");
+      next: (response) => {
+        console.log('Réponse suppression:', response);
+        if (response.success) {
+          message.comments = message.comments.filter(c => c._id !== commentId);
+          this.notificationService.showNotification("Commentaire supprimé", "success");
+        }
       },
       error: (err) => {
+        console.error('Erreur suppression:', err);
         if (err.status === 403) {
           this.notificationService.showNotification("Vous ne pouvez supprimer que vos propres commentaires", "info");
+        } else if (err.status === 404) {
+          this.notificationService.showNotification("Commentaire non trouvé", "info");
         } else {
           this.notificationService.showNotification("Erreur lors de la suppression", "error");
         }
@@ -83,6 +86,17 @@ export class HomeComponent implements OnInit {
     });
   }
   
+  fetchConnectedUsers(): void {
+    this.authService.getConnectedUsers().subscribe({
+      next: (data) => {
+        this.connectedUsers = data;
+      },
+      error: () => {
+        this.notificationService.showNotification("Erreur lors du chargement utilisateurs connectés", 'error');
+      }
+    });
+  }
+
   fetchMessages(): void {
     this.messageService.getMessages().subscribe({
       next: (data) => {
@@ -93,17 +107,6 @@ export class HomeComponent implements OnInit {
       error: () => {
         this.notificationService.showNotification('Erreur lors du chargement des messages', 'error');
         this.isLoading = false;
-      }
-    });
-  }
-
-  fetchConnectedUsers(): void {
-    this.authService.getConnectedUsers().subscribe({
-      next: (data) => {
-        this.connectedUsers = data;
-      },
-      error: () => {
-        this.notificationService.showNotification("Erreur lors du chargement utilisateurs connectés", 'error');
       }
     });
   }
@@ -161,17 +164,24 @@ export class HomeComponent implements OnInit {
     const payload = { userId: idUser };
     this.messageService.likeMessage(message._id, payload).subscribe({
       next: (res) => {
+        console.log('Réponse likeMessage:', res);
         if (res.liked) {
-          message.likes++;
-          message.likedBy.push(idUser);
+          if (!message.likedBy) message.likedBy = [];
+          if (!message.likedBy.includes(idUser)) {
+            message.likes = (message.likes || 0) + 1;
+            message.likedBy.push(idUser);
+          }
           this.notificationService.showNotification('Message liké !', 'success');
         } else {
-          message.likes--;
-          message.likedBy = message.likedBy.filter(id => id !== idUser);
+          if (message.likedBy?.includes(idUser)) {
+            message.likes = Math.max(0, (message.likes || 0) - 1);
+            message.likedBy = message.likedBy.filter(id => id !== idUser);
+          }
           this.notificationService.showNotification('Like retiré.', 'info');
         }
       },
-      error: () => {
+      error: (err) => {
+        console.error('Erreur like:', err);
         this.notificationService.showNotification('Erreur lors du like', 'error');
       }
     });
@@ -183,26 +193,43 @@ export class HomeComponent implements OnInit {
       if (user.id !== this.currentUser.id) {
         this.notifications.unshift(`👤 ${user.pseudo} s’est connecté.`);
         this.unreadCount++;
-        //this.notificationService.showNotification(`${user.pseudo} s'est connecté(e) 👋`, 'info');
+        console.log("${user.pseudo} s'est connecté(e) 👋");
+        this.notificationService.showNotification(`${user.pseudo} s'est connecté(e) 👋`, 'info');
       }
       this.connectedUsers.push(user);
     });
   
     this.wsService.onUserDisconnected().subscribe(({ userId, pseudo }) => {
       this.connectedUsers = this.connectedUsers.filter(u => u.id !== userId);
-      //this.notificationService.showNotification(`${pseudo} s'est déconnecté(e) 😴`, 'info');
+      console.log("${pseudo} s'est déconnecté(e) 😴");
+      this.notificationService.showNotification(`${pseudo} s'est déconnecté(e) 😴`, 'info');
     });
   
     // Likes
-    this.wsService.onMessageLiked().subscribe(({ messageId, user, userId }) => {
+    this.wsService.onMessageLiked().subscribe(({ messageId, user, userId, liked }) => {
+      console.log('Réception message-liked: messageId - user - userId', messageId, user, userId, liked);
       const message = this.messages.find(msg => msg._id === messageId);
       if (message) {
-        if (!message.likedBy?.includes(userId)) {
-          message.likes++;
-          message.likedBy.push(userId);
+        if (userId !== this.currentUser.id) {
+          if (liked) {
+            // Quelqu'un a liké
+            if (!message.likedBy) message.likedBy = [];
+            if (!message.likedBy.includes(userId)) {
+              message.likes = (message.likes || 0) + 1;
+              message.likedBy.push(userId);
+            }
+          } else {
+            // Quelqu'un a retiré son like
+            if (message.likedBy?.includes(userId)) {
+              message.likes = Math.max(0, (message.likes || 0) - 1);
+              message.likedBy = message.likedBy.filter(id => id !== userId);
+            }
+          }
         }
-        if (message.createdBy.id === this.currentUser.id) {
-          this.notifications.unshift(`❤️ ${user.pseudo} a liké votre message.`);
+
+        if (message.createdBy.id === this.currentUser.id && userId !== this.currentUser.id) {
+          const action = liked ? 'liké' : 'retiré son like de';
+          this.notifications.unshift(`❤️ ${user.pseudo} a ${action} votre message.`);
           this.unreadCount++;
         }
       }
@@ -213,7 +240,11 @@ export class HomeComponent implements OnInit {
       const message = this.messages.find(m => m._id === messageId);
       if (message) {
         message.comments = message.comments || [];
-        message.comments.push(comment);
+        
+        const exists = message.comments.some(c => c._id === comment._id);
+        if (!exists) {
+          message.comments.push(comment);
+        }
   
         if (message.createdBy.id === this.currentUser.id) {
           this.notifications.unshift(`💬 ${comment.commentedBy.pseudo} a commenté votre message.`);
@@ -223,11 +254,21 @@ export class HomeComponent implements OnInit {
     });
   
     // Partages
-    this.wsService.onMessageShared().subscribe(({ messageId, userId }) => {
-      const message = this.messages.find(msg => msg._id === messageId);
-      if (message && !message.sharedBy?.includes(userId)) {
+    this.wsService.onMessageShared().subscribe(({ originalMessageId, sharedBy, user }) => {
+      const message = this.messages.find(msg => msg._id === originalMessageId);
+      
+      if (message) {
         message.sharedBy = message.sharedBy || [];
-        message.sharedBy.push(userId);
+        
+        if (!message.sharedBy?.includes(sharedBy)) {
+          message.sharedBy.push(sharedBy);
+          
+          if (message.createdBy.id === this.currentUser.id && sharedBy !== this.currentUser.id) {
+            const userName = user ? user.pseudo : "Quelqu'un";
+            this.notifications.unshift(`🔄 ${userName} a partagé votre message.`);
+            this.unreadCount++;
+          }
+        }
         this.unreadCount++;
       }
     });
@@ -258,15 +299,20 @@ export class HomeComponent implements OnInit {
     const payload = { userId: this.authService.getUser().id };
     this.messageService.shareMessage(message._id, payload).subscribe({
       next: (res) => {
+        console.log('Réponse shareMessage:', res);
+        if (!message.sharedBy) message.sharedBy = [];
         if (res.unshared) {
-          message.sharedBy = message.sharedBy?.filter(id => id !== payload.userId);
+          message.sharedBy = message.sharedBy.filter(id => id !== payload.userId);
           this.notificationService.showNotification('Partage annulé', 'info');
-        } else {
-          message.sharedBy?.push(payload.userId);
+        } else if (res.shared) {
+          if (!message.sharedBy.includes(payload.userId)) {
+            message.sharedBy.push(payload.userId);
+          }
           this.notificationService.showNotification('Message partagé !', 'success');
         }
       },
-      error: () => {
+      error: (err) => {
+        console.error('Erreur partage:', err);
         this.notificationService.showNotification('Erreur lors du partage', 'error');
       }
     });

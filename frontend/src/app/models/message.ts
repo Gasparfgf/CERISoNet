@@ -8,7 +8,7 @@ export interface Message {
     createdBy: LikedBy;
     body: string;
     likes: number;
-    likedBy: number[];
+    likedBy?: number[];
     hashtags: string[];
     comments: MessageComment[];
     images: { url: string; title: string };

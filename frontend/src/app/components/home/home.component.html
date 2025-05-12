@@ -73,7 +73,7 @@
 
       <!-- Actions -->
     <div class="message-actions">
-      <button (click)="likeMessage(message)" [ngClass]="{'liked': message.likedBy.includes(currentUser?.id)}">
+      <button (click)="likeMessage(message)" [ngClass]="{'liked': message.likedBy?.includes(currentUser?.id)}">
         ❤️ {{ message.likes }}
       </button>
       <button (click)="toggleComments(message._id)">
