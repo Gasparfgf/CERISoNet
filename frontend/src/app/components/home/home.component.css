@@ -312,3 +312,117 @@
 .labels-radio {
   display: block;
 }
+
+.notification-badge {
+  background-color: red;
+  color: white;
+  border-radius: 50%;
+  padding: 2px 6px;
+  font-size: 12px;
+  position: absolute;
+  top: -5px;
+  right: -5px;
+}
+
+.navbar-right button {
+  position: relative;
+}
+
+.notification-panel {
+  position: absolute;
+  right: 10px;
+  top: 60px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  width: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.notification-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.notification-item {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  position: relative;
+}
+
+.notification-time {
+  display: block;
+  color: #999;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+.delete-notification-btn, .close-btn, .clear-all-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #999;
+  font-size: 14px;
+}
+
+.delete-notification-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.delete-notification-btn:hover, .close-btn:hover, .clear-all-btn:hover {
+  color: #333;
+}
+
+.clear-all-btn {
+  margin-left: auto;
+  padding: 5px 10px;
+  border-radius: 3px;
+  background-color: #f9f9f9;
+}
+
+.pagination-controls {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.load-more-btn {
+  padding: 10px 20px;
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+}
+
+.load-more-btn:hover {
+  background-color: #3367d6;
+}
+
+.load-more-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  color: #666;
+  font-size: 14px;
+}

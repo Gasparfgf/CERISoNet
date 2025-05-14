@@ -15,6 +15,17 @@ const getConnectedUsers = async (req, res) => {
     }
 };
 
+const updateConnectedUsers = async (email, status) => {
+    try {
+      await pool.query(
+        'UPDATE fredouil.compte SET statut_connexion = $1 WHERE mail = $2',
+        [status, email]
+      );
+    } catch (error) {
+      console.error('Erreur mise à jour statut connexion:', error);
+    }
+};
+
 const login = async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -34,10 +45,7 @@ const login = async (req, res) => {
             const lastLogin = await getLastLogin(email);
             await updateLastLogin(email);
 
-            await pool.query(
-                'UPDATE fredouil.compte SET statut_connexion = 1 WHERE mail = $1',
-                [email]
-            );
+            await updateConnectedUsers(email, 1);
 
             req.session.user = { email };
             res.json({
@@ -66,12 +74,7 @@ const logout = async (req, res) => {
     const userEmail = req.session.user?.email;
 
     try {
-        if (userEmail) {
-            await pool.query(
-                'UPDATE fredouil.compte SET statut_connexion = 0 WHERE mail = $1',
-                [userEmail]
-            );
-        }
+        if (userEmail) await updateConnectedUsers(userEmail, 0);
         req.session.destroy((err) => {
             if (err) {
                 console.error('Erreur destruction session', err);
@@ -85,6 +88,5 @@ const logout = async (req, res) => {
         res.status(500).json({ success: false, message: 'Erreur serveur logout' });
     }
 };
-
 
 module.exports = { getConnectedUsers, login, logout };

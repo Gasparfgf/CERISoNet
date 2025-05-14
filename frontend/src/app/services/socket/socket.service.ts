@@ -17,21 +17,17 @@ export class SocketService {
   }
 
   // Événements d'écoute
-  onUserConnected(): Observable<any> {
-    return new Observable(observer => {
-      this.socket.on('user-connected', (data) => {
-        console.log('WebSocket - Received user-connected:', data);
-        observer.next(data)
-    });
-    });
+  emitEvent(eventName: string, data: any): void {
+    this.socket.emit(eventName, data);
   }
 
-  onUserDisconnected(): Observable<any> {
+  emitUserConnection(userData: { userId: number, pseudo: string, avatar: string }): void {
+    this.socket.emit('user-connected', userData);
+  }
+
+  onCommentDeleted(): Observable<any> {
     return new Observable(observer => {
-      this.socket.on('user-disconnected', (data) => {
-        console.log('WebSocket - Received user-disconnected:', data);
-        observer.next(data)
-    });
+      this.socket.on('comment-deleted', (data) => observer.next(data));
     });
   }
 
@@ -62,14 +58,26 @@ export class SocketService {
     });
   }
 
-  onCommentDeleted(): Observable<any> {
+  onUpdatedConnectedUsers(): Observable<any[]> {
     return new Observable(observer => {
-      this.socket.on('comment-deleted', (data) => observer.next(data));
+      this.socket.on('updated-connected-users', (data) => observer.next(data));
+    });
+  }
+  
+  onUserConnected(): Observable<any> {
+    return new Observable(observer => {
+      this.socket.on('user-connected', (data) => {
+        observer.next(data)
+    });
     });
   }
 
-  emitEvent(eventName: string, data: any): void {
-    this.socket.emit(eventName, data);
+  onUserDisconnected(): Observable<any> {
+    return new Observable(observer => {
+      this.socket.on('user-disconnected', (data) => {
+        observer.next(data)
+      });
+    });
   }
 
 }

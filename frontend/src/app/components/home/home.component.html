@@ -5,15 +5,26 @@
     <h1>CERISoNet</h1>
   </div>
   <div class="navbar-right">
-    <button (click)="showNotifications()">🔔</button>
+    <button (click)="toggleNotificationPanel()">
+      🔔 <span *ngIf="unreadCount > 0" class="notification-badge">{{ unreadCount }}</span>
+    </button>
     <button (click)="logout()">🚪 Déconnexion</button>
   </div>
 </nav>
 
 <div class="notification-panel" *ngIf="showNotificationPanel">
-  <h4>📢 Notifications</h4>
-  <ul>
-    <li *ngFor="let note of notifications">{{ note }}</li>
+  <div class="notification-header">
+    <h4>📢 Notifications</h4>
+    <button class="close-btn" (click)="toggleNotificationPanel()">✕</button>
+    <button class="clear-all-btn" (click)="clearAllNotifications()" *ngIf="notifications.length > 0">Effacer tout</button>
+  </div>
+
+  <ul class="notification-list">
+    <li *ngFor="let note of notifications" class="notification-item">
+      {{ note.message }}
+      <small class="notification-time">{{ note.timestamp | date:'dd/MM/yyyy à HH:mm' }}</small>
+      <button class="delete-notification-btn" (click)="deleteNotificationById(note.id)">✕</button>
+    </li>
     <li *ngIf="notifications.length === 0">Aucune notification.</li>
   </ul>
 </div>
@@ -43,7 +54,6 @@
   <!-- 🟢 COLONNE DROITE : Messages -->
   <main class="message-feed">
     <h2>Bienvenue sur le réseau CERISoNet 🎓</h2>
-
     <div *ngIf="isLoading" class="loading">Chargement des messages...</div>
     <div *ngIf="!isLoading && messages.length === 0">
       Aucun message à afficher.
@@ -63,29 +73,25 @@
       <!-- Corps message -->
       <div class="message-body">
         <p>{{ message.body }}</p>
-
         <img *ngIf="message.images" [src]="message.images.url" [alt]="message.images.title" class="post-image" />
-
         <div class="hashtags">
           <span *ngFor="let tag of message.hashtags" class="tag">{{ tag }}</span>
         </div>
       </div>
 
       <!-- Actions -->
-    <div class="message-actions">
-      <button (click)="likeMessage(message)" [ngClass]="{'liked': message.likedBy?.includes(currentUser?.id)}">
-        ❤️ {{ message.likes }}
-      </button>
-      <button (click)="toggleComments(message._id)">
-        💬 {{ message.comments.length }}
-      </button>
-      <button (click)="shareMessage(message)" [ngClass]="{'shared': message.sharedBy?.includes(currentUser?.id)}">
-        🔁 Partager
-      </button>
-    </div>
-
-      
-
+      <div class="message-actions">
+        <button (click)="likeMessage(message)" [ngClass]="{'liked': message.likedBy?.includes(currentUser?.id)}">
+          ❤️ {{ message.likes }}
+        </button>
+        <button (click)="toggleComments(message._id)">
+          💬 {{ message.comments.length }}
+        </button>
+        <button (click)="shareMessage(message)" [ngClass]="{'shared': message.sharedBy?.includes(currentUser?.id)}">
+          🔁 Partager
+        </button>
+      </div>
+        
       <!-- Section commentaires -->
       <div class="comments-section" *ngIf="showComments[message._id]">
         <h4>Commentaires :</h4>
@@ -93,7 +99,6 @@
         <div *ngFor="let comment of message.comments" class="comment">
           <p><strong>{{ comment.commentedBy.pseudo }}</strong> : {{ comment.text }}</p>
           <small>{{ comment.date }} à {{ comment.hour }}</small>
-
           <button *ngIf="comment.commentedBy.id === currentUser?.id"
                   (click)="deleteComment(message, comment._id)">
             🗑️ Supprimer
@@ -101,7 +106,7 @@
         </div>
 
         <!-- Ajouter un commentaire -->
-        <form (ngSubmit)="submitComment(message)" class="comment-form">
+        <form (ngSubmit)="addComment(message)" class="comment-form">
           <input type="text" [(ngModel)]="newComment[message._id]" name="newComment{{ message._id }}" placeholder="Ajouter un commentaire..." required>
           <button type="submit">Envoyer</button>
         </form>
@@ -110,6 +115,15 @@
       <!-- Partagé par -->
       <div class="shared-info" *ngIf="message.sharedBy?.length">
         <small>Partagé par {{ message.sharedBy?.length }} utilisateur(s)</small>
+      </div>
+    </div>
+
+    <div class="pagination-controls">
+      <button *ngIf="currentPage < totalPages" (click)="loadMoreMessages()" class="load-more-btn">
+        Charger plus de messages
+      </button>
+      <div class="pagination-info" *ngIf="filteredMessages.length > 0">
+        Page {{ currentPage }} sur {{ totalPages }}
       </div>
     </div>
   </main>
@@ -131,13 +145,13 @@
 
       <div class="labels-radio">
         <label>
-          <input type="radio" name="ownerFilter" value="all" [(ngModel)]="ownerFilter" (change)="filterMessages()"> Tous
+          <input type="radio" name="ownerFilter" value="all" [(ngModel)]="ownerFilter" (change)="sortMessages()"> Tous
         </label>
         <label>
-          <input type="radio" name="ownerFilter" value="mine" [(ngModel)]="ownerFilter" (change)="filterMessages()"> Moi
+          <input type="radio" name="ownerFilter" value="mine" [(ngModel)]="ownerFilter" (change)="sortMessages()"> Moi
         </label>
         <label>
-          <input type="radio" name="ownerFilter" value="others" [(ngModel)]="ownerFilter" (change)="filterMessages()"> Autres
+          <input type="radio" name="ownerFilter" value="others" [(ngModel)]="ownerFilter" (change)="sortMessages()"> Autres
         </label>
       </div>
 

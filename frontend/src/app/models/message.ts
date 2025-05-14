@@ -20,4 +20,4 @@ export interface MessageResponse {
     currentPage: number;
     totalPages: number;
     totalMessages: number;
-  }
+}

@@ -4,6 +4,7 @@ import { FormsModule } from "@angular/forms";
 import { Router } from '@angular/router';
 import { MessageComment } from '../../models/comment';
 import { Message } from '../../models/message';
+import { Notification } from '../../models/notification';
 import { AuthService } from '../../services/authentication/auth.service';
 import { MessageService } from '../../services/message/message.service';
 import { NotificationService } from "../../services/notification/notification.service";
@@ -36,9 +37,9 @@ export class HomeComponent implements OnInit {
   originalMessages: Message[] = [];
   filteredMessages: Message[] = [];
 
-  notifications: string[] = [];
-  unreadCount: number = 0;
+  notifications: Notification[] = [];
   showNotificationPanel = false;
+  unreadCount: number = 0;
 
   constructor(
     private notificationService: NotificationService,
@@ -50,7 +51,7 @@ export class HomeComponent implements OnInit {
 
   ngOnInit(): void {
     this.currentUser = this.authService.getUser();
-    if (!this.currentUser) { // vérification que l’utilisateur est bien récupéré
+    if (!this.currentUser) {
       this.router.navigate(['/login']);
       return;
     }
@@ -60,10 +61,38 @@ export class HomeComponent implements OnInit {
     this.fetchMessages();
     this.fetchConnectedUsers();
     this.listenToWebSocketEvents();
+
+    this.filteredMessages = this.messages;
+  }
+
+  addNotification(message: string, type: string, entityId?: string, userId?: number): void {
+    const notification: Notification = {
+      id: this.generateUniqueId(),
+      message,
+      type,
+      entityId,
+      userId,
+      timestamp: Date.now()
+    };
+    
+    this.notifications.unshift(notification);
+    this.unreadCount++;
+  }
+
+  deleteNotificationById(id: string): void {
+    this.notifications = this.notifications.filter(note => note.id !== id);
+  }
+
+  clearAllNotifications(): void {
+    this.notifications = [];
+    this.unreadCount = 0;
   }
 
   deleteComment(message: Message, commentId: string): void {
     const userId = this.authService.getUser().id;
+    console.log("Suppression commentaire - messageId:", message._id);
+    console.log("Suppression commentaire - commentId:", commentId);
+    console.log("Suppression commentaire - userId:", userId);
   
     this.messageService.deleteComment(message._id, commentId, userId).subscribe({
       next: (response) => {
@@ -74,14 +103,8 @@ export class HomeComponent implements OnInit {
         }
       },
       error: (err) => {
-        console.error('Erreur suppression:', err);
-        if (err.status === 403) {
-          this.notificationService.showNotification("Vous ne pouvez supprimer que vos propres commentaires", "info");
-        } else if (err.status === 404) {
-          this.notificationService.showNotification("Commentaire non trouvé", "info");
-        } else {
-          this.notificationService.showNotification("Erreur lors de la suppression", "error");
-        }
+        console.error('Erreur suppression commentaire:', err);
+        this.notificationService.showNotification("Erreur lors de la suppression", "error");
       }
     });
   }
@@ -91,7 +114,8 @@ export class HomeComponent implements OnInit {
       next: (data) => {
         this.connectedUsers = data;
       },
-      error: () => {
+      error: (err) => {
+        console.error('Erreur fetch connected users:', err);
         this.notificationService.showNotification("Erreur lors du chargement utilisateurs connectés", 'error');
       }
     });
@@ -102,13 +126,22 @@ export class HomeComponent implements OnInit {
     this.messageService.getMessages(page).subscribe({
       next: (response) => {
         this.messages = page === 1 
-          ? response.messages 
+          ? response.messages
+        // Ajouter les nouveaux messages à la liste existante
           : [...this.messages, ...response.messages];
+        
+        // Mettre à jour les messages
+        //this.filteredMessages = this.messages;
+        
         this.currentPage = response.currentPage;
         this.totalPages = response.totalPages;
+        // Appliquer les filtres et tris actuels aux messages mis à jour
+        this.filterAndSortMessages();
+        
         this.isLoading = false;
       },
-      error: () => {
+      error: (err) => {
+        console.error('Erreur fetch messages:', err);
         this.notificationService.showNotification('Erreur lors du chargement des messages', 'error');
         this.isLoading = false;
       }
@@ -122,8 +155,7 @@ export class HomeComponent implements OnInit {
   }
 
   filterAndSortMessages() {
-    this.originalMessages = this.messages;
-    let messages = [...this.originalMessages];
+    let messages = [...this.messages];
   
     // Filtrage par propriétaire
     if (this.ownerFilter === 'mine') {
@@ -153,11 +185,11 @@ export class HomeComponent implements OnInit {
     this.filteredMessages = messages;
   }
   
-  
-  filterMessages() {
-    this.filterAndSortMessages();
+  // Générer un ID unique pour chaque notification
+  generateUniqueId(): string {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
-  
+
   isUserConnected() {
     const user = this.authService.getUser();
     if (!user) {return false; }
@@ -198,136 +230,140 @@ export class HomeComponent implements OnInit {
   }
 
   listenToWebSocketEvents(): void {
-    // Connexions
-    this.wsService.onUserConnected().subscribe(user => {
-      if (user.id !== this.currentUser.id) {
-        this.notifications.unshift(`👤 ${user.pseudo} s’est connecté.`);
-        this.unreadCount++;
-        console.log("${user.pseudo} s'est connecté(e) 👋");
-        this.notificationService.showNotification(`${user.pseudo} s'est connecté(e) 👋`, 'info');
-      }
-      this.connectedUsers.push(user);
-    });
+    this.wsComment();
+    this.wsConnexion();
+    this.wsLike();
+    this.wsShare();
+  }  
   
-    this.wsService.onUserDisconnected().subscribe(({ userId, pseudo }) => {
-      this.connectedUsers = this.connectedUsers.filter(u => u.id !== userId);
-      console.log("${pseudo} s'est déconnecté(e) 😴");
-      this.notificationService.showNotification(`${pseudo} s'est déconnecté(e) 😴`, 'info');
-    });
-  
-    // Likes
-    this.wsService.onMessageLiked().subscribe(({ messageId, user, userId, liked }) => {
-      console.log('Réception message-liked: messageId - user - userId', messageId, user, userId, liked);
-      const message = this.messages.find(msg => msg._id === messageId);
+  private wsShare() {
+    this.wsService.onMessageShared().subscribe(({ originalMessageId, sharedBy, user, shared, unshared }) => {
+      const message = this.messages.find(msg => msg._id === originalMessageId);
+
       if (message) {
-        if (userId !== this.currentUser.id) {
-          if (liked) {
-            // Quelqu'un a liké
-            if (!message.likedBy) message.likedBy = [];
-            if (!message.likedBy.includes(userId)) {
-              message.likes = (message.likes || 0) + 1;
-              message.likedBy.push(userId);
-            }
-          } else {
-            // Quelqu'un a retiré son like
-            if (message.likedBy?.includes(userId)) {
-              message.likes = Math.max(0, (message.likes || 0) - 1);
-              message.likedBy = message.likedBy.filter(id => id !== userId);
+        message.sharedBy = message.sharedBy || [];
+
+        if (shared) {
+          if (!message.sharedBy.includes(sharedBy)) {
+            message.sharedBy.push(sharedBy);
+
+            if (message.createdBy.id === this.currentUser.id && sharedBy !== this.currentUser.id) {
+              const userName = user ? user.pseudo : "Quelqu'un";
+              this.addNotification(`🔄 ${userName} a partagé votre message.`, 'share', originalMessageId, sharedBy);
             }
           }
-        }
+        } else if (unshared) {
+          message.sharedBy = message.sharedBy.filter(id => id !== sharedBy);
 
-        if (message.createdBy.id === this.currentUser.id && userId !== this.currentUser.id) {
-          const action = liked ? 'liké' : 'retiré son like de';
-          this.notifications.unshift(`❤️ ${user.pseudo} a ${action} votre message.`);
-          this.unreadCount++;
+          if (message.createdBy.id === this.currentUser.id && sharedBy !== this.currentUser.id) {
+            this.removeNotification('share', originalMessageId, sharedBy);
+          }
         }
       }
     });
-  
-    // Commentaires
+  }
+
+  private wsComment() {
     this.wsService.onMessageCommented().subscribe(({ messageId, comment }) => {
       const message = this.messages.find(m => m._id === messageId);
+      
       if (message) {
         message.comments = message.comments || [];
-        
+
         const exists = message.comments.some(c => c._id === comment._id);
-        if (!exists) {
-          message.comments.push(comment);
-        }
-  
-        if (message.createdBy.id === this.currentUser.id) {
-          this.notifications.unshift(`💬 ${comment.commentedBy.pseudo} a commenté votre message.`);
-          this.unreadCount++;
+        if (!exists) { message.comments.push(comment); }
+
+        if (message.createdBy.id === this.currentUser.id && comment.commentedBy.id !== this.currentUser.id) {
+          this.addNotification(`💬 ${comment.commentedBy.pseudo} a commenté votre message.`, 'comment', messageId, comment.commentedBy.id);
         }
       }
     });
 
     this.wsService.onCommentDeleted().subscribe(({ messageId, commentId, deletedBy }) => {
       const message = this.messages.find(msg => msg._id === messageId);
-      
+
       if (message) {
-        // Supprimer le commentaire localement
         message.comments = message.comments.filter(c => c._id !== commentId);
-        
+
         // Notification si ce n'est pas notre propre suppression
-        if (deletedBy !== this.currentUser.id) {
-          const deletedComment = message.comments.find(c => c._id === commentId);
-          if (deletedComment && message.createdBy.id === this.currentUser.id) {
-            this.notifications.unshift(`💬 Un commentaire a été supprimé de votre message.`);
-            this.unreadCount++;
-          }
+        if (deletedBy !== this.currentUser.id && message.createdBy.id === this.currentUser.id) {
+          this.removeNotification('comment', messageId, deletedBy);
         }
       }
     });
-  
-    // Partages
-    this.wsService.onMessageShared().subscribe(({ originalMessageId, sharedBy, user, shared, unshared }) => {
-      const message = this.messages.find(msg => msg._id === originalMessageId);
-      
+  }
+
+  private wsLike() {
+    this.wsService.onMessageLiked().subscribe(({ messageId, user, userId, liked }) => {
+      console.log('Réception message-liked: messageId - user - userId', messageId, user, userId, liked);
+
+      const message = this.messages.find(msg => msg._id === messageId);
       if (message) {
-        message.sharedBy = message.sharedBy || [];
-        
-        if (shared) {
-          // Ajout d'un partage
-          if (!message.sharedBy.includes(sharedBy)) {
-            message.sharedBy.push(sharedBy);
-            
-            if (message.createdBy.id === this.currentUser.id && sharedBy !== this.currentUser.id) {
-              const userName = user ? user.pseudo : "Quelqu'un";
-              this.notifications.unshift(`🔄 ${userName} a partagé votre message.`);
-              this.unreadCount++;
+        if (userId !== this.currentUser.id) {
+          if (liked) {
+            if (!message.likedBy) message.likedBy = [];
+            if (!message.likedBy.includes(userId)) {
+              message.likes = (message.likes || 0) + 1;
+              message.likedBy.push(userId);
+            }
+          } else {
+            if (message.likedBy?.includes(userId)) {
+              message.likes = Math.max(0, (message.likes || 0) - 1);
+              message.likedBy = message.likedBy.filter(id => id !== userId);
+              this.removeNotification('like', messageId, userId);
             }
           }
-        } else if (unshared) {
-          // Suppression d'un partage
-          message.sharedBy = message.sharedBy.filter(id => id !== sharedBy);
-          
-          if (message.createdBy.id === this.currentUser.id && sharedBy !== this.currentUser.id) {
-            const userName = user ? user.pseudo : "Quelqu'un";
-            this.notifications.unshift(`🔄 ${userName} a annulé le partage de votre message.`);
+        }
+
+        if (message.createdBy.id === this.currentUser.id && userId !== this.currentUser.id) {
+          if (liked) {
+            this.addNotification(`❤️ ${user.pseudo} a liké votre message.`, 'like', messageId, userId);
+          } else {
+            this.removeNotification('like', messageId, userId);
           }
         }
       }
     });
-  }  
-  
+  }
+
+  private wsConnexion() {
+    this.wsService.emitUserConnection({
+      userId: this.currentUser.id,
+      pseudo: this.currentUser.pseudo,
+      avatar: this.currentUser.avatar
+    });
+
+    this.wsService.onUpdatedConnectedUsers().subscribe(users => {
+      this.connectedUsers = users;
+    });
+  }
+
   logout(): void {
     this.authService.logout().subscribe({
       next: (response) => {
         this.wsService.emitEvent('user-disconnected', {
-          userId: this.currentUser.id
+          userId: this.currentUser.id,
+          pseudo: this.currentUser.pseudo
         });
       
-        this.notificationService.showNotification(response.message, 'success');
+        this.notificationService.showNotification("Vous êtes déconnecté(e).", 'success');
         this.router.navigate(['/login']);
       },
-      error: () => {
+      error: (err) => {
+        console.log("Erreur lors de la déconnexion", err);
         this.notificationService.showNotification('Erreur lors de la déconnexion', 'error');
       }
     });
   }
   
+  removeNotification(type: string, entityId: string, userId: number): void {
+    this.notifications = this.notifications.filter(notification => 
+      !(notification.type === type && 
+        notification.entityId === entityId && 
+        notification.userId === userId)
+    );
+  }
+
   shareMessage(message: Message): void {
     if (!this.isUserConnected()) {
       this.notificationService.showNotification('Utilisateur non connecté.', 'error');
@@ -356,23 +392,17 @@ export class HomeComponent implements OnInit {
     });
   }
   
-  showNotifications(): void {
-    this.showNotificationPanel = !this.showNotificationPanel;
-    this.notificationService.showNotification("Pas encore de notifications", "info");
-  }
-  
   sortMessages() {
     this.filterAndSortMessages();
   }
 
-  submitComment(message: Message): void {
+  addComment(message: Message): void {
     if (!this.isUserConnected()) {
       this.notificationService.showNotification('Utilisateur non connecté.', 'error');
       return;
     }
     
     const commentText = this.newComment[message._id];
-    
     if (!commentText || commentText.trim() === '') {
       this.notificationService.showNotification("Champ vide ! Veuillez écrire quelque chose avant d'envoyer", 'info');
       return;
@@ -405,7 +435,8 @@ export class HomeComponent implements OnInit {
         this.newComment[message._id] = '';
         this.notificationService.showNotification('Commentaire ajouté !', 'success');
       },
-      error: () => {
+      error: (err) => {
+        console.log("Erreur lors de l'ajout du commentaire", err)
         this.notificationService.showNotification("Erreur lors de l'ajout du commentaire", 'error');
       }
     });
@@ -413,5 +444,12 @@ export class HomeComponent implements OnInit {
   
   toggleComments(messageId: string): void {
     this.showComments[messageId] = !this.showComments[messageId];
+  }
+
+  toggleNotificationPanel(): void {
+    this.showNotificationPanel = !this.showNotificationPanel;
+    if (this.showNotificationPanel) {
+      this.unreadCount = 0;
+    }
   }
 }

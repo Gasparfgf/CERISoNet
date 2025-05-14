@@ -2,7 +2,11 @@ const { connectToMongo, ObjectId, pool } = require('../utils/db.utils');
 
 
 addComment = async (req, res) => {
-  const messageId = parseInt(req.params.id);
+  let messageId = req.params.id;
+  // Essayer de convertir en nombre si c'est une chaîne numérique
+  if (!isNaN(messageId)) {
+    messageId = parseInt(messageId);
+  }
   const { text, commentedBy, date, hour } = req.body;
 
   const userId = commentedBy.id;
@@ -51,16 +55,18 @@ addComment = async (req, res) => {
 };
 
 deleteComment = async (req, res) => {
-  const messageId = parseInt(req.params.messageId);
+  let messageId = parseInt(req.params.messageId);
   const commentId = req.params.commentId;
   const { userId } = req.body;
+  console.log("deleteComment.messageId reçu:", req.params.messageId); // Correction ici
+  console.log("deleteComment.userId reçu:", req.body);
+  console.log("deleteComment.commentId reçu:", req.params.commentId);
 
   try {
     const db = await connectToMongo();
     const messagesCollection = db.collection('CERISoNet');
 
     const message = await messagesCollection.findOne({ _id: messageId });
-    
     if (!message) {
       return res.status(404).json({
         success: false,
@@ -69,7 +75,6 @@ deleteComment = async (req, res) => {
     }
 
     const comment = message.comments?.find(c => c._id.toString() === commentId);
-    
     if (!comment) {
       return res.status(404).json({
         success: false,
@@ -84,6 +89,7 @@ deleteComment = async (req, res) => {
       });
     }
 
+    // Supprime le commentaire
     await messagesCollection.updateOne(
       { _id: messageId },
       { $pull: { comments: { _id: new ObjectId(commentId) } } }
@@ -97,10 +103,10 @@ deleteComment = async (req, res) => {
       deletedBy: userId 
     });
 
-    res.json({ success: true, message: 'Commentaire supprimé' });
+    return res.json({ success: true, message: 'Commentaire supprimé' });
   } catch (err) {
     console.error("Erreur lors de la suppression du commentaire :", err);
-    res.status(500).json({ success: false, message: 'Erreur serveur lors de la suppression' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur lors de la suppression' });
   }
 };
 
@@ -178,7 +184,11 @@ getMessages = async (req, res) => {
 };
 
 likeMessage = async (req, res) => {
-  const messageId = parseInt(req.params.id);
+  let messageId = req.params.id;
+  // Essayer de convertir en nombre si c'est une chaîne numérique
+  if (!isNaN(messageId)) {
+    messageId = parseInt(messageId);
+  }
   const userId = req.body.userId;
 
   try {
@@ -331,6 +341,5 @@ shareMessage = async (req, res) => {
     res.status(500).json({ success: false, message: 'Erreur lors du partage du message' });
   }
 };
-
 
 module.exports = { getMessages, shareMessage, likeMessage, addComment, deleteComment }
