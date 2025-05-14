@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { FormsModule } from "@angular/forms";
 import { Router } from '@angular/router';
 import { MessageComment } from '../../models/comment';
@@ -40,6 +40,9 @@ export class HomeComponent implements OnInit {
   notifications: Notification[] = [];
   showNotificationPanel = false;
   unreadCount: number = 0;
+
+  isLoadingMore = false;
+  enableInfiniteScroll = true;
 
   constructor(
     private notificationService: NotificationService,
@@ -137,7 +140,7 @@ export class HomeComponent implements OnInit {
         this.totalPages = response.totalPages;
         // Appliquer les filtres et tris actuels aux messages mis à jour
         this.filterAndSortMessages();
-        
+
         this.isLoading = false;
       },
       error: (err) => {
@@ -149,9 +152,32 @@ export class HomeComponent implements OnInit {
   }
 
   loadMoreMessages(): void {
+    if (this.currentPage < this.totalPages && !this.isLoadingMore) {
+      this.isLoadingMore = true;
+      
+      this.messageService.getMessages(this.currentPage + 1).subscribe({
+        next: (response) => {
+          // Ajouter les nouveaux messages à la liste existante
+          this.messages = [...this.messages, ...response.messages];
+          
+          this.currentPage = response.currentPage;
+          this.totalPages = response.totalPages;
+          
+          // Appliquer les filtres et tris actuels aux messages mis à jour
+          this.filterAndSortMessages();
+          
+          this.isLoadingMore = false;
+        },
+        error: (err) => {
+          console.error('Erreur fetch messages supplémentaires:', err);
+          this.notificationService.showNotification('Erreur lors du chargement de messages supplémentaires', 'error');
+          this.isLoadingMore = false;
+        }
+      });
+    }/*
     if (this.currentPage < this.totalPages) {
       this.fetchMessages(this.currentPage + 1);
-    }
+    }*/
   }
 
   filterAndSortMessages() {
@@ -234,7 +260,25 @@ export class HomeComponent implements OnInit {
     this.wsConnexion();
     this.wsLike();
     this.wsShare();
-  }  
+  }
+
+  @HostListener('window:scroll', ['$event'])
+  onScroll(): void {
+    if (!this.enableInfiniteScroll || this.isLoading || this.isLoadingMore || this.currentPage >= this.totalPages) {
+      return;
+    }
+
+    // Déclencher le chargement quand l'utilisateur est à ~80% de la page
+    const windowHeight = window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop;
+    
+    const scrollPercentage = (scrollTop / (documentHeight - windowHeight)) * 100;
+    
+    if (scrollPercentage > 80) {
+      this.loadMoreMessages();
+    }
+  }
   
   private wsShare() {
     this.wsService.onMessageShared().subscribe(({ originalMessageId, sharedBy, user, shared, unshared }) => {

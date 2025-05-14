@@ -68,6 +68,7 @@ deleteComment = async (req, res) => {
 
     const message = await messagesCollection.findOne({ _id: messageId });
     if (!message) {
+      console.log("message in 404");
       return res.status(404).json({
         success: false,
         message: "Message non trouvé"
@@ -76,6 +77,7 @@ deleteComment = async (req, res) => {
 
     const comment = message.comments?.find(c => c._id.toString() === commentId);
     if (!comment) {
+      console.log("comment in 404");
       return res.status(404).json({
         success: false,
         message: "Commentaire non trouvé"

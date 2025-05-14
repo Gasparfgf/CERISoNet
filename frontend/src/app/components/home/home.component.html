@@ -119,11 +119,14 @@
     </div>
 
     <div class="pagination-controls">
-      <button *ngIf="currentPage < totalPages" (click)="loadMoreMessages()" class="load-more-btn">
+      <button *ngIf="currentPage < totalPages && !enableInfiniteScroll" (click)="loadMoreMessages()" class="load-more-btn">
         Charger plus de messages
       </button>
       <div class="pagination-info" *ngIf="filteredMessages.length > 0">
         Page {{ currentPage }} sur {{ totalPages }}
+        <small *ngIf="currentPage < totalPages && enableInfiniteScroll" class="infinite-scroll-hint">
+          Faites défiler vers le bas pour charger plus de messages
+        </small>
       </div>
     </div>
   </main>
@@ -156,6 +159,26 @@
       </div>
 
       <input type="text" [(ngModel)]="hashtagFilter" placeholder="Filtrer par #hashtag" (input)="filterAndSortMessages()" />
+    </div>
+
+    <div class="scroll-options">
+      <h4>Mode de navigation:</h4>
+      <div class="scroll-option-container">
+        <label class="scroll-option">
+          <input type="radio" name="scrollMode" [value]="true" [(ngModel)]="enableInfiniteScroll" />
+          Défilement infini automatique
+        </label>
+        <label class="scroll-option">
+          <input type="radio" name="scrollMode" [value]="false" [(ngModel)]="enableInfiniteScroll" />
+          Bouton "Charger plus"
+        </label>
+      </div>
+      <span class="option-help" *ngIf="enableInfiniteScroll">
+        Les messages se chargeront automatiquement en faisant défiler vers le bas
+      </span>
+      <span class="option-help" *ngIf="!enableInfiniteScroll">
+        Utilisez le bouton en bas de page pour charger plus de messages
+      </span>
     </div>
   </div>
 

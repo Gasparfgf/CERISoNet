@@ -33,7 +33,9 @@
 }
 
 .navbar-right button:hover {
+  border: 1px solid #fcffff;
   background: #84b6f4;
+  color: #fcffff;
 }
 
 .notification-panel {
@@ -67,6 +69,7 @@
   text-align: center;
   border-radius: 10px;
   margin-bottom: 20px;
+  border: 1px solid #005187;
 }
 
 .profile-card h3 p {
@@ -91,6 +94,7 @@
   background: #fcffff;
   padding: 10px;
   border-radius: 10px;
+  border: 1px solid #005187;
 }
 
 .connected-users ul {
@@ -217,7 +221,7 @@
 
 .message-actions button.liked,
 .message-actions button.shared {
-  background-color: #007bff; /* Bleu */
+  background-color: #007bff;
   color: white;
   border-radius: 5px;
 }
@@ -248,13 +252,21 @@
   border: 1px solid #ccc;
 }
 
-.comment-form button {
+.comment-form button, .comment button {
   background-color: #007bff;
   color: white;
-  border: none;
+  border: 1px solid #005187;
   border-radius: 6px;
   padding: 6px 12px;
   cursor: pointer;
+}
+
+.comment-form button:hover, .comment button:hover {
+  background-color: #005187;
+}
+
+.comment button  {
+  margin-left: 30px;
 }
 
 .shared-info {
@@ -292,6 +304,7 @@
   padding: 15px;
   border-radius: 10px;
   margin-bottom: 20px;
+  border: 1px solid #005187;
 }
 
 .trier-section h4,
@@ -425,4 +438,71 @@
 .pagination-info {
   color: #666;
   font-size: 14px;
+  text-align: center;
+}
+
+.infinite-scroll-hint {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  font-style: italic;
+  margin-top: 5px;
+}
+
+.loading-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.loading-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.scroll-options {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid #005187;
+}
+
+.scroll-option-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.scroll-option {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.scroll-option input {
+  margin-right: 8px;
+}
+
+.option-help {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-top: 8px;
+  font-style: italic;
+  border-top: 1px solid #e1e4e8;
+  padding-top: 8px;
 }
