@@ -174,10 +174,7 @@ export class HomeComponent implements OnInit {
           this.isLoadingMore = false;
         }
       });
-    }/*
-    if (this.currentPage < this.totalPages) {
-      this.fetchMessages(this.currentPage + 1);
-    }*/
+    }
   }
 
   filterAndSortMessages() {
