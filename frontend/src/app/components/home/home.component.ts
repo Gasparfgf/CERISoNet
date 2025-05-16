@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnInit } from '@angular/core';
 import { FormsModule } from "@angular/forms";
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { MessageComment } from '../../models/comment';
 import { Message } from '../../models/message';
 import { Notification } from '../../models/notification';
@@ -15,7 +15,7 @@ import { BannerComponent } from '../banner/banner.component';
   selector: 'app-home',
   standalone: true,
   imports: [
-    FormsModule, CommonModule, BannerComponent
+    FormsModule, CommonModule, BannerComponent, RouterModule
   ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css'

@@ -1,0 +1,62 @@
+<div class="study-groups-container">
+    <!-- Avertissement SSL -->
+    <app-ssl-warning 
+      *ngIf="showSslWarning" 
+      (dismissed)="onSslWarningDismissed()">
+    </app-ssl-warning>
+  
+    <!-- En-tête -->
+    <div class="header">
+      <h2>Groupes d'étude</h2>
+      <button class="btn create-btn" (click)="showCreateForm()" *ngIf="!isCreatingGroup && !isEditingGroup">
+        ➕ Créer un groupe d'étude
+      </button>
+    </div>
+  
+    <!-- Barre de recherche -->
+    <div class="search-bar" *ngIf="!showSslWarning">
+      <input 
+        type="text" 
+        [(ngModel)]="searchTerm" 
+        placeholder="Rechercher des groupes..." 
+        (input)="searchGroups()"
+      >
+      <select [(ngModel)]="searchFilter" (change)="searchGroups()">
+        <option value="all">Tous</option>
+        <option value="tag">Par tag</option>
+        <option value="subject">Par matière</option>
+      </select>
+    </div>
+  
+    <!-- Formulaire de création/édition -->
+    <div class="group-form" *ngIf="isCreatingGroup || isEditingGroup">
+      <h3>{{ isCreatingGroup ? 'Créer un nouveau groupe' : 'Modifier le groupe' }}</h3>
+      <form [formGroup]="groupForm">
+        <!-- Contenu du formulaire inchangé -->
+        <!-- ... -->
+      </form>
+    </div>
+  
+    <!-- Chargement -->
+    <div *ngIf="isLoading && !showSslWarning" class="loading">
+      Chargement des groupes d'étude...
+    </div>
+  
+    <!-- Liste des groupes -->
+    <div *ngIf="!isLoading && !isCreatingGroup && !isEditingGroup && !selectedGroup && !showSslWarning" class="group-list">
+      <!-- Contenu de la liste inchangé -->
+      <!-- ... -->
+    </div>
+  
+    <!-- Détails d'un groupe -->
+    <div *ngIf="selectedGroup && !isEditingGroup && !showSslWarning" class="group-details">
+      <!-- Contenu des détails inchangé -->
+      <!-- ... -->
+    </div>
+  
+    <!-- Message d'erreur de connexion alternatif -->
+    <div *ngIf="!isLoading && !showSslWarning && studyGroups.length === 0" class="connection-error">
+      <p>Aucun groupe d'étude trouvé. Cela peut être dû à un problème de connexion au serveur.</p>
+      <button class="btn" (click)="testSslConnection()">Réessayer</button>
+    </div>
+  </div>

@@ -1,5 +1,3 @@
-// Gestion de l'authentification
-
 const { pool } = require('../utils/db.utils');
 const { getLastLogin, updateLastLogin } = require('../utils/session.utils');
 const crypto = require('crypto');

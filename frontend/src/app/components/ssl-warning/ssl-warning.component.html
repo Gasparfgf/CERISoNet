@@ -1,0 +1,18 @@
+<div class="ssl-warning-banner">
+    <div class="warning-icon">⚠️</div>
+    <div class="warning-message">
+      <h4>Problème de connexion détecté</h4>
+      <p>Votre navigateur bloque la connexion sécurisée à notre serveur d'API en raison d'un certificat SSL auto-signé.</p>
+      <p>Pour résoudre ce problème:</p>
+      <ol>
+        <li>
+          <a [href]="apiUrlForTesting" target="_blank" rel="noopener noreferrer">
+            Cliquez ici pour ouvrir l'API dans un nouvel onglet
+          </a>
+        </li>
+        <li>Acceptez le certificat de sécurité dans la nouvelle fenêtre (cliquez sur "Avancé" puis "Continuer vers le site")</li>
+        <li>Revenez à cette page et actualisez</li>
+      </ol>
+    </div>
+    <button class="close-button" (click)="dismissWarning()">×</button>
+  </div>

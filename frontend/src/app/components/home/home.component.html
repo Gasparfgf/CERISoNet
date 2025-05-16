@@ -5,6 +5,9 @@
     <h1>CERISoNet</h1>
   </div>
   <div class="navbar-right">
+    <button routerLink="/study-groups" class="btn btn-primary">
+      Web service
+    </button>
     <button (click)="toggleNotificationPanel()">
       🔔 <span *ngIf="unreadCount > 0" class="notification-badge">{{ unreadCount }}</span>
     </button>
